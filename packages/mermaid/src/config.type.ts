@@ -2141,6 +2141,38 @@ export interface SankeyDiagramConfig extends BaseDiagramConfig {
    */
   nodePadding?: number;
   /**
+   * Vertical alignment for the terminal node layer.
+   */
+  nodeVerticalAlignment?: 'top' | 'center';
+  /**
+   * Expand the diagram height when a dense layer cannot fit its nodes and padding.
+   */
+  autoHeight?: boolean;
+  /**
+   * Minimum node height used when autoHeight expands the diagram.
+   */
+  minNodeHeight?: number;
+  /**
+   * Minimum rendered width of Sankey links in pixels.
+   */
+  linkMinWidth?: number;
+  /**
+   * Maximum height used when autoHeight expands the diagram.
+   */
+  maxHeight?: number;
+  /**
+   * Vertical label baseline offset in em units.
+   */
+  labelOffset?: number;
+  /**
+   * Additional vertical padding between nodes when values are shown.
+   */
+  labelPadding?: number;
+  /**
+   * Vertical inset reserved for labels inside the diagram.
+   */
+  labelMargin?: number;
+  /**
    * The style of labels in the sankey diagram. 'outlined' provides better readability with a white stroke behind the text.
    *
    */
