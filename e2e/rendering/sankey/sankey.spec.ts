@@ -176,6 +176,56 @@ test.describe('Sankey Diagram', () => {
     });
   });
 
+  test.describe('when given autoHeight', () => {
+    test('should preserve proportional widths for a dense layer', async ({ page }, testInfo) => {
+      const denseGraph = `sankey
+        a,b,10
+        c,b,10
+        d,b,10
+        e,b,10
+        f,b,10
+        g,b,10
+        h,b,10
+        i,b,10
+        j,b,10
+        k,b,10
+        l,b,10
+        m,b,10
+        n,b,10
+        o,b,10
+        p,b,10
+        q,b,10
+        r,b,10
+        s,b,10
+        t,b,10
+        u,b,10
+        v,b,10
+        w,b,10
+        x,b,10
+        y,b,10
+        z,b,10
+        b,winning,250
+        `;
+
+      await renderGraph(page, testInfo, denseGraph, {
+        sankey: { autoHeight: true, useMaxWidth: false },
+      });
+
+      const sourceHeight = parseFloat(
+        (await page.locator('.node rect').first().getAttribute('height')) ?? '0'
+      );
+      const targetHeight = parseFloat(
+        (await page.locator('.node rect').nth(1).getAttribute('height')) ?? '0'
+      );
+
+      expect(sourceHeight).toBeGreaterThan(0);
+      expect(targetHeight).toBeGreaterThan(sourceHeight);
+      expect(
+        parseFloat((await page.locator('.link path').first().getAttribute('stroke-width')) ?? '0')
+      ).toBeGreaterThan(1);
+    });
+  });
+
   test.describe('when given nodeColors', () => {
     test('should apply custom node colors', async ({ page }, testInfo) => {
       await renderGraph(page, testInfo, nodeColorsGraph, {

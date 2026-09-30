@@ -88,9 +88,11 @@ export const draw = function (text: string, id: string, _version: string, diagOb
   // Establish svg dimensions and get width and height
   //
   const width = conf?.width ?? defaultSankeyConfig.width!;
-  const height = conf?.height ?? defaultSankeyConfig.width!;
+  const height = conf?.height ?? defaultSankeyConfig.height!;
   const useMaxWidth = conf?.useMaxWidth ?? defaultSankeyConfig.useMaxWidth!;
   const nodeAlignment = conf?.nodeAlignment ?? defaultSankeyConfig.nodeAlignment!;
+  const nodeVerticalAlignment =
+    conf?.nodeVerticalAlignment ?? defaultSankeyConfig.nodeVerticalAlignment ?? 'top';
   const prefix = conf?.prefix ?? defaultSankeyConfig.prefix!;
   const suffix = conf?.suffix ?? defaultSankeyConfig.suffix!;
   const showValues = conf?.showValues ?? defaultSankeyConfig.showValues!;
@@ -98,6 +100,13 @@ export const draw = function (text: string, id: string, _version: string, diagOb
   // New config options with defaults
   const nodeWidth = conf?.nodeWidth ?? defaultSankeyConfig.nodeWidth ?? 10;
   const nodePadding = conf?.nodePadding ?? defaultSankeyConfig.nodePadding ?? 12;
+  const autoHeight = conf?.autoHeight ?? defaultSankeyConfig.autoHeight ?? false;
+  const minNodeHeight = conf?.minNodeHeight ?? defaultSankeyConfig.minNodeHeight ?? 12;
+  const linkMinWidth = conf?.linkMinWidth ?? defaultSankeyConfig.linkMinWidth ?? 1;
+  const maxHeight = conf?.maxHeight ?? defaultSankeyConfig.maxHeight;
+  const labelOffset = conf?.labelOffset ?? defaultSankeyConfig.labelOffset ?? 0.35;
+  const labelPadding = conf?.labelPadding ?? defaultSankeyConfig.labelPadding ?? 15;
+  const labelMargin = conf?.labelMargin ?? defaultSankeyConfig.labelMargin ?? 0;
   const labelStyle = conf?.labelStyle ?? defaultSankeyConfig.labelStyle ?? 'legacy';
   const nodeColors: Record<string, string> = conf?.nodeColors ?? {};
 
@@ -115,23 +124,81 @@ export const draw = function (text: string, id: string, _version: string, diagOb
   // Get alignment function
   const nodeAlign = alignmentsMap[nodeAlignment];
 
+  let layoutHeight = height;
+  const layoutPadding = nodePadding + (showValues ? labelPadding : 0);
+
+  if (autoHeight && graph.nodes.length > 1) {
+    const probeGraph = {
+      nodes: graph.nodes.map((node: any) => ({ ...node })),
+      links: graph.links.map((link: any) => ({ ...link })),
+    };
+    const probeSankey = d3Sankey()
+      .nodeId((d: any) => d.id)
+      .nodeWidth(nodeWidth)
+      .nodePadding(layoutPadding)
+      .nodeAlign(nodeAlign)
+      .extent([
+        [0, labelMargin],
+        [width, height - labelMargin],
+      ]);
+
+    probeSankey(probeGraph);
+
+    const nodesPerLayer = new Map<number, number>();
+    probeGraph.nodes.forEach((node: any) => {
+      nodesPerLayer.set(node.layer, (nodesPerLayer.get(node.layer) ?? 0) + 1);
+    });
+    const densestLayer = Math.max(...nodesPerLayer.values(), 0);
+    const requiredHeight =
+      densestLayer * minNodeHeight + Math.max(0, densestLayer - 1) * layoutPadding;
+    const smallestNodeHeight = Math.min(
+      ...probeGraph.nodes.map((node: any) => node.y1 - node.y0).filter((value: number) => value > 0)
+    );
+    const scaleHeight =
+      smallestNodeHeight > 0 ? (height * minNodeHeight) / smallestNodeHeight : height;
+    layoutHeight = Math.max(height, requiredHeight, scaleHeight);
+    if (maxHeight !== undefined) {
+      layoutHeight = Math.min(layoutHeight, Math.max(height, maxHeight));
+    }
+  }
+
   // Construct and configure a Sankey generator
   // That will be a function that calculates nodes and links dimensions
   //
   const sankey = d3Sankey()
     .nodeId((d: any) => d.id) // we use 'id' property to identify node
     .nodeWidth(nodeWidth)
-    .nodePadding(nodePadding + (showValues ? 15 : 0))
+    .nodePadding(layoutPadding)
     .nodeAlign(nodeAlign)
     .extent([
-      [0, 0],
-      [width, height],
+      [0, labelMargin],
+      [width, layoutHeight - labelMargin],
     ]);
 
   // Compute the Sankey layout: calculate nodes and links positions
   // Our `graph` object will be mutated by this and enriched with other properties
   //
   sankey(graph);
+
+  if (nodeVerticalAlignment === 'center' && graph.nodes.length > 1) {
+    const terminalLayer = Math.max(...graph.nodes.map((node: any) => node.layer ?? 0));
+    const terminalNodes = graph.nodes.filter((node: any) => node.layer === terminalLayer);
+    const terminalTop = Math.min(...terminalNodes.map((node: any) => node.y0));
+    const terminalBottom = Math.max(...terminalNodes.map((node: any) => node.y1));
+    const availableTop = labelMargin;
+    const availableBottom = layoutHeight - labelMargin;
+    const offset = (availableTop + availableBottom - terminalTop - terminalBottom) / 2;
+
+    terminalNodes.forEach((node: any) => {
+      node.y0 += offset;
+      node.y1 += offset;
+    });
+    graph.links.forEach((link: any) => {
+      if (link.target.layer === terminalLayer) {
+        link.y1 += offset;
+      }
+    });
+  }
 
   // Find central node layer for smart label positioning
   const centralNodeLayer = findCentralNodeLayer(graph.nodes);
@@ -213,7 +280,7 @@ export const draw = function (text: string, id: string, _version: string, diagOb
       .attr('class', className ?? null)
       .attr('x', (d: any) => getLabelPosition(d).x)
       .attr('y', (d: any) => (d.y1 + d.y0) / 2)
-      .attr('dy', `${showValues ? '0' : '0.35'}em`)
+      .attr('dy', `${showValues ? labelOffset : 0.35}em`)
       .attr('text-anchor', (d: any) => getLabelPosition(d).anchor)
       .text(getText);
 
@@ -276,9 +343,10 @@ export const draw = function (text: string, id: string, _version: string, diagOb
     .append('path')
     .attr('d', d3SankeyLinkHorizontal())
     .attr('stroke', coloring)
-    .attr('stroke-width', (d: any) => Math.max(1, d.width));
+    .attr('stroke-width', (d: any) => Math.max(linkMinWidth, d.width));
 
   setupGraphViewbox(undefined, svg, 0, useMaxWidth);
+  svg.attr('viewBox', `0 0 ${width} ${layoutHeight}`);
 };
 
 export default {

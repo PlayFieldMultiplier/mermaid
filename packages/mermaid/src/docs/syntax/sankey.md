@@ -214,6 +214,27 @@ You can customize the node dimensions:
 - `nodeWidth` - width of the node rectangles in pixels (default: `10`)
 - `nodePadding` - vertical padding between nodes in pixels (default: `12`)
 
+### Adaptive Height (fork)
+
+Set `autoHeight` to `true` when a dense layer would otherwise collapse link widths. The
+renderer expands the canvas based on the densest layer while preserving one shared flow
+scale across all columns. `minNodeHeight` controls the minimum visible node height used
+when expanding the canvas (default: `12`).
+
+```mermaid
+---
+config:
+  sankey:
+    autoHeight: true
+    minNodeHeight: 12
+---
+sankey
+
+source,target,10
+another source,target,10
+target,result,20
+```
+
 ```mermaid-example
 ---
 config:

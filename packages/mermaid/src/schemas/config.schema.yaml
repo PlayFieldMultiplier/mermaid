@@ -2712,6 +2712,48 @@ $defs: # JSON Schema definition (maybe we should move these to a separate file)
           The padding between nodes in the sankey diagram.
         type: number
         default: 12
+      nodeVerticalAlignment:
+        description: |
+          Vertical alignment for the terminal node layer.
+        type: string
+        enum:
+          - top
+          - center
+        default: top
+      autoHeight:
+        description: |
+          Expand the diagram height when a dense layer cannot fit its nodes and padding.
+        type: boolean
+        default: false
+      minNodeHeight:
+        description: |
+          Minimum node height used when autoHeight expands the diagram.
+        type: number
+        default: 12
+      linkMinWidth:
+        description: |
+          Minimum rendered width of Sankey links in pixels.
+        type: number
+        default: 1
+      maxHeight:
+        description: |
+          Maximum height used when autoHeight expands the diagram.
+        type: number
+      labelOffset:
+        description: |
+          Vertical label baseline offset in em units.
+        type: number
+        default: 0.35
+      labelPadding:
+        description: |
+          Additional vertical padding between nodes when values are shown.
+        type: number
+        default: 15
+      labelMargin:
+        description: |
+          Vertical inset reserved for labels inside the diagram.
+        type: number
+        default: 0
       labelStyle:
         description: |
           The style of labels in the sankey diagram. 'outlined' provides better readability with a white stroke behind the text.

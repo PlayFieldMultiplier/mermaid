@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portland Pinball League Sankey Preview</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        --text: #d8dee9;
+        --page: #1e1e1e;
+        --header: #252526;
+        --border: #353535;
+        --panel: #252526;
+        --shadow: rgb(0 0 0 / 25%);
+        color: var(--text);
+        background: var(--page);
+      }
+
+      [data-theme='light'] {
+        color-scheme: light;
+        --text: #1f2933;
+        --page: #f4f1ea;
+        --header: #fbfaf7;
+        --border: #d7d0c4;
+        --panel: #fffefa;
+        --shadow: rgb(54 47 36 / 7%);
+      }
+
+      body {
+        margin: 0;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 28px clamp(20px, 5vw, 72px) 20px;
+        border-bottom: 1px solid var(--border);
+        background: var(--header);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.35rem, 2vw, 2rem);
+        font-weight: 650;
+        letter-spacing: 0;
+      }
+
+      #theme-toggle {
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 8px 12px;
+        color: var(--text);
+        background: transparent;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      main {
+        display: grid;
+        gap: 28px;
+        width: 100%;
+        box-sizing: border-box;
+        margin: 0 auto;
+        padding: 28px clamp(16px, 4vw, 72px) 64px;
+      }
+
+      .diagram {
+        min-width: 0;
+        overflow: hidden;
+        padding: 20px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        box-shadow: 0 8px 24px var(--shadow);
+      }
+
+      .diagram h2 {
+        margin: 0 0 16px;
+        font-size: 1rem;
+        font-weight: 650;
+      }
+
+      .diagram svg {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+      }
+
+      .diagram .node-labels {
+        font-size: 18px !important;
+      }
+
+      .error {
+        padding: 16px;
+        color: #8a1c1c;
+        background: #fff0ed;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="page-title">Mermaid Markdown Preview</h1>
+      <button id="theme-toggle" type="button" aria-pressed="false">Light mode</button>
+    </header>
+    <main id="diagrams" aria-live="polite">Loading diagrams...</main>
+
+    <script type="module">
+      const { default: mermaid } = await import(
+        new URL('../packages/mermaid/dist/mermaid.esm.mjs', import.meta.url)
+      );
+
+      const params = new URLSearchParams(window.location.search);
+      const readmeUrl =
+        params.get('source') || new URL('../README.md', import.meta.url).href;
+      const container = document.querySelector('#diagrams');
+      const pageTitle = document.querySelector('#page-title');
+
+      const escapeHtml = (value) =>
+        value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+
+      let markdown;
+      let currentTheme = params.get('theme') === 'light' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = currentTheme;
+      pageTitle.textContent = `Mermaid Markdown Preview: ${
+        readmeUrl.split('/').filter(Boolean).pop() || 'README.md'
+      }`;
+      document.title = pageTitle.textContent;
+      document.querySelector('#theme-toggle').textContent =
+        currentTheme === 'dark' ? 'Light mode' : 'Dark mode';
+
+      const renderReadme = async () => {
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'strict',
+          theme: currentTheme === 'dark' ? 'dark' : 'default',
+          sankey: {
+            autoHeight: true,
+            minNodeHeight: 20,
+            linkMinWidth: 1,
+            maxHeight: 900,
+            labelOffset: 0.35,
+            labelPadding: 0,
+            labelMargin: 10,
+            nodePadding: 6,
+            nodeVerticalAlignment: 'center',
+            labelStyle: 'legacy',
+            useMaxWidth: true,
+            width: 1200,
+            height: 700,
+          },
+        });
+
+        if (!markdown) {
+          const response = await fetch(readmeUrl);
+          if (!response.ok) {
+            throw new Error(`Could not load ${readmeUrl}: ${response.status}`);
+          }
+          markdown = await response.text();
+        }
+
+        const blocks = [...markdown.matchAll(/^```mermaid\s*\n([\s\S]*?)^```/gm)];
+
+        if (!blocks.length) {
+          throw new Error('No Mermaid blocks found in the README.');
+        }
+
+        container.replaceChildren();
+        for (const [index, match] of blocks.entries()) {
+          const section = document.createElement('section');
+          section.className = 'diagram';
+          const heading = document.createElement('h2');
+          heading.textContent = `Diagram ${index + 1}`;
+          section.append(heading);
+
+          try {
+            const { svg } = await mermaid.render(`ppl-sankey-${index}`, match[1]);
+            section.insertAdjacentHTML('beforeend', svg);
+          } catch (error) {
+            const message = document.createElement('div');
+            message.className = 'error';
+            message.textContent = `${error.stack || error}`;
+            section.append(message);
+          }
+          container.append(section);
+        }
+      };
+
+      const themeToggle = document.querySelector('#theme-toggle');
+      themeToggle.addEventListener('click', async () => {
+        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = currentTheme;
+        params.set('theme', currentTheme);
+        window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
+        themeToggle.textContent = currentTheme === 'dark' ? 'Light mode' : 'Dark mode';
+        themeToggle.setAttribute('aria-pressed', String(currentTheme === 'light'));
+        await renderReadme();
+      });
+
+      renderReadme().catch((error) => {
+        container.innerHTML = `<div class="error">${escapeHtml(error.stack || error)}</div>`;
+      });
+    </script>
+  </body>
+</html>
