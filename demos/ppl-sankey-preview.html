@@ -110,12 +110,13 @@
     <main id="diagrams" aria-live="polite">Loading diagrams...</main>
 
     <script type="module">
-      import mermaid from '/mermaid-sankey-fork/packages/mermaid/dist/mermaid.esm.mjs';
+      const { default: mermaid } = await import(
+        new URL('../packages/mermaid/dist/mermaid.esm.mjs', import.meta.url)
+      );
 
       const params = new URLSearchParams(window.location.search);
       const readmeUrl =
-        params.get('source') ||
-        '/PPL_001_bootstrap-fall-2026-data-import/INPUTS/2026/WEB/DIAGRAMS/WEEK_DIAGRAMS/SANKEY/README.md';
+        params.get('source') || new URL('../README.md', import.meta.url).href;
       const container = document.querySelector('#diagrams');
       const pageTitle = document.querySelector('#page-title');
 
