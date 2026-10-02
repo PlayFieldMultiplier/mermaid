@@ -42,6 +42,58 @@
         background: var(--header);
       }
 
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(220px, 1fr));
+        gap: 12px;
+        padding: 14px clamp(20px, 5vw, 72px);
+        border-bottom: 1px solid var(--border);
+        background: var(--panel);
+      }
+
+      .controls legend {
+        grid-column: 1 / -1;
+        font-weight: 650;
+      }
+
+      .sort-column {
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        border: 1px solid var(--border);
+      }
+
+      .sort-column-title {
+        font-weight: 650;
+      }
+
+      .sort-column label,
+      .sort-column select {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        font: inherit;
+      }
+
+      .sort-column select {
+        width: 100%;
+        padding: 5px;
+        color: var(--text);
+        border: 1px solid var(--border);
+        background: var(--header);
+      }
+
+      .sort-column label {
+        cursor: pointer;
+      }
+
+      @media (max-width: 760px) {
+        .controls {
+          grid-template-columns: 1fr;
+        }
+      }
+
       h1 {
         margin: 0;
         font-size: clamp(1.35rem, 2vw, 2rem);
@@ -107,18 +159,64 @@
       <h1 id="page-title">Mermaid Markdown Preview</h1>
       <button id="theme-toggle" type="button" aria-pressed="false">Light mode</button>
     </header>
+    <fieldset class="controls" aria-label="Sankey row sorting">
+      <legend>Force row sorting</legend>
+      <div class="sort-column">
+        <span class="sort-column-title">Week</span>
+        <label><input type="checkbox" data-sort-enabled="0" /> Force</label>
+        <label><input type="radio" name="sort-by-0" value="label" checked /> Label</label>
+        <label><input type="radio" name="sort-by-0" value="value" /> Value</label>
+        <select data-sort-direction="0" aria-label="Week sort direction">
+          <option value="ascending">Ascending</option>
+          <option value="descending">Descending</option>
+        </select>
+      </div>
+      <div class="sort-column">
+        <span class="sort-column-title">Venue</span>
+        <label><input type="checkbox" data-sort-enabled="1" /> Force</label>
+        <label><input type="radio" name="sort-by-1" value="label" checked /> Label</label>
+        <label><input type="radio" name="sort-by-1" value="value" /> Value</label>
+        <select data-sort-direction="1" aria-label="Venue sort direction">
+          <option value="ascending">Ascending</option>
+          <option value="descending">Descending</option>
+        </select>
+      </div>
+      <div class="sort-column">
+        <span class="sort-column-title">Team</span>
+        <label><input type="checkbox" data-sort-enabled="2" /> Force</label>
+        <label><input type="radio" name="sort-by-2" value="label" checked /> Label</label>
+        <label><input type="radio" name="sort-by-2" value="value" /> Value</label>
+        <select data-sort-direction="2" aria-label="Team sort direction">
+          <option value="ascending">Ascending</option>
+          <option value="descending">Descending</option>
+        </select>
+      </div>
+    </fieldset>
     <main id="diagrams" aria-live="polite">Loading diagrams...</main>
 
     <script type="module">
-      const { default: mermaid } = await import(
-        new URL('../packages/mermaid/dist/mermaid.esm.mjs', import.meta.url)
-      );
-
       const params = new URLSearchParams(window.location.search);
+      const { default: mermaid } = await import(
+        `../packages/mermaid/dist/mermaid.esm.mjs?build=${encodeURIComponent(
+          params.get('build') || 'latest'
+        )}`
+      );
       const readmeUrl =
-        params.get('source') || new URL('../README.md', import.meta.url).href;
+        params.get('source') ||
+        '/PPL_001_bootstrap-fall-2026-data-import/INPUTS/2026/WEB/DIAGRAMS/WEEK_DIAGRAMS/SANKEY/README.md';
       const container = document.querySelector('#diagrams');
       const pageTitle = document.querySelector('#page-title');
+      const sortEnabledInputs = [...document.querySelectorAll('[data-sort-enabled]')];
+      const sortDirectionInputs = [...document.querySelectorAll('[data-sort-direction]')];
+      const getSortModes = () =>
+        sortEnabledInputs.map((input, index) => {
+          if (!input.checked) {
+            return undefined;
+          }
+          const by = document.querySelector(`input[name="sort-by-${index}"]:checked`).value;
+          const direction = sortDirectionInputs[index].value;
+          return `${by}-${direction}`;
+        });
 
       const escapeHtml = (value) =>
         value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
@@ -132,8 +230,11 @@
       document.title = pageTitle.textContent;
       document.querySelector('#theme-toggle').textContent =
         currentTheme === 'dark' ? 'Light mode' : 'Dark mode';
+      let renderToken = 0;
 
       const renderReadme = async () => {
+        const token = ++renderToken;
+        const sortModes = getSortModes();
         mermaid.initialize({
           startOnLoad: false,
           securityLevel: 'strict',
@@ -152,6 +253,7 @@
             useMaxWidth: true,
             width: 1200,
             height: 700,
+            nodeSort: sortModes,
           },
         });
 
@@ -169,8 +271,15 @@
           throw new Error('No Mermaid blocks found in the README.');
         }
 
+        if (token !== renderToken) {
+          return;
+        }
+
         container.replaceChildren();
         for (const [index, match] of blocks.entries()) {
+          if (token !== renderToken) {
+            return;
+          }
           const section = document.createElement('section');
           section.className = 'diagram';
           const heading = document.createElement('h2');
@@ -178,7 +287,10 @@
           section.append(heading);
 
           try {
-            const { svg } = await mermaid.render(`ppl-sankey-${index}`, match[1]);
+            const { svg } = await mermaid.render(`ppl-sankey-${token}-${index}`, match[1]);
+            if (token !== renderToken) {
+              return;
+            }
             section.insertAdjacentHTML('beforeend', svg);
           } catch (error) {
             const message = document.createElement('div');
@@ -191,6 +303,19 @@
       };
 
       const themeToggle = document.querySelector('#theme-toggle');
+      [
+        ...sortEnabledInputs,
+        ...sortDirectionInputs,
+        ...document.querySelectorAll('[name^="sort-by-"]'),
+      ].forEach((input) => {
+        input.addEventListener('change', () => {
+          renderReadme().catch((error) => {
+            if (renderToken > 0) {
+              container.innerHTML = `<div class="error">${escapeHtml(error.stack || error)}</div>`;
+            }
+          });
+        });
+      });
       themeToggle.addEventListener('click', async () => {
         currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
         document.documentElement.dataset.theme = currentTheme;

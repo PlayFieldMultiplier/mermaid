@@ -214,6 +214,31 @@ You can customize the node dimensions:
 - `nodeWidth` - width of the node rectangles in pixels (default: `10`)
 - `nodePadding` - vertical padding between nodes in pixels (default: `12`)
 
+### Per-Column Row Sorting (fork)
+
+Set `nodeSort` to an array of up to three modes, ordered from left to right. Each
+column can be sorted by `label` or `value`, in either `ascending` or `descending`
+order. Omitted columns keep the native Sankey layout order.
+
+```mermaid
+---
+config:
+  sankey:
+    nodeSort:
+      - value-descending
+      - label-ascending
+      - value-descending
+---
+sankey
+
+a,Venue A,12
+b,Venue B,8
+c,Venue C,20
+Venue A,Team A,12
+Venue B,Team B,8
+Venue C,Team C,20
+```
+
 ### Adaptive Height (fork)
 
 Set `autoHeight` to `true` when a dense layer would otherwise collapse link widths. The

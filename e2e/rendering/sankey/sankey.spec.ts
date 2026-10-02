@@ -226,6 +226,31 @@ test.describe('Sankey Diagram', () => {
     });
   });
 
+  test.describe('when given nodeSort', () => {
+    test('should force value order within the selected column', async ({ page }, testInfo) => {
+      const graph = `sankey
+        a,center,1
+        b,center,3
+        c,center,2
+        center,end,6
+        `;
+
+      await renderGraph(page, testInfo, graph, {
+        screenshot: false,
+        sankey: { nodeSort: ['value-descending'], useMaxWidth: false },
+      });
+
+      const sourceNodes = await page.locator('.node[x="0"]')
+        .evaluateAll((nodes) =>
+          nodes
+            .map((node) => ({ id: node.id, y: Number(node.getAttribute('y')) }))
+            .sort((a, b) => a.y - b.y)
+        );
+
+      expect(sourceNodes.map((node) => node.id)).toEqual(['node-3', 'node-4', 'node-1']);
+    });
+  });
+
   test.describe('when given nodeColors', () => {
     test('should apply custom node colors', async ({ page }, testInfo) => {
       await renderGraph(page, testInfo, nodeColorsGraph, {

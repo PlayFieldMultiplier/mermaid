@@ -100,6 +100,7 @@ export const draw = function (text: string, id: string, _version: string, diagOb
   // New config options with defaults
   const nodeWidth = conf?.nodeWidth ?? defaultSankeyConfig.nodeWidth ?? 10;
   const nodePadding = conf?.nodePadding ?? defaultSankeyConfig.nodePadding ?? 12;
+  const nodeSort = conf?.nodeSort ?? defaultSankeyConfig.nodeSort ?? [];
   const autoHeight = conf?.autoHeight ?? defaultSankeyConfig.autoHeight ?? false;
   const minNodeHeight = conf?.minNodeHeight ?? defaultSankeyConfig.minNodeHeight ?? 12;
   const linkMinWidth = conf?.linkMinWidth ?? defaultSankeyConfig.linkMinWidth ?? 1;
@@ -123,9 +124,9 @@ export const draw = function (text: string, id: string, _version: string, diagOb
 
   // Get alignment function
   const nodeAlign = alignmentsMap[nodeAlignment];
+  const layoutPadding = nodePadding + (showValues ? labelPadding : 0);
 
   let layoutHeight = height;
-  const layoutPadding = nodePadding + (showValues ? labelPadding : 0);
 
   if (autoHeight && graph.nodes.length > 1) {
     const probeGraph = {
@@ -179,6 +180,48 @@ export const draw = function (text: string, id: string, _version: string, diagOb
   // Our `graph` object will be mutated by this and enriched with other properties
   //
   sankey(graph);
+
+  for (const [layer, shouldSort] of nodeSort.entries()) {
+    if (!shouldSort) {
+      continue;
+    }
+
+    const layerNodes = graph.nodes
+      .filter((node: any) => node.layer === layer)
+      .sort((a: any, b: any) => {
+        const byValue = shouldSort.startsWith('value-');
+        const comparison = byValue
+          ? (a.value ?? 0) - (b.value ?? 0)
+          : String(a.id).localeCompare(String(b.id));
+        return shouldSort.endsWith('descending') ? -comparison : comparison;
+      });
+    if (layerNodes.length < 2) {
+      continue;
+    }
+
+    const top = Math.min(...layerNodes.map((node: any) => node.y0));
+    const bottom = Math.max(...layerNodes.map((node: any) => node.y1));
+    const totalNodeHeight = layerNodes.reduce(
+      (total: number, node: any) => total + node.y1 - node.y0,
+      0
+    );
+    const gap = Math.max(0, (bottom - top - totalNodeHeight) / (layerNodes.length - 1));
+    let nextTop = top;
+    for (const node of layerNodes) {
+      const nodeHeight = node.y1 - node.y0;
+      node.y0 = nextTop;
+      node.y1 = nextTop + nodeHeight;
+      nextTop = node.y1 + gap;
+    }
+  }
+
+  if (nodeSort.some(Boolean)) {
+    graph.nodes.forEach((node: any) => {
+      node.sourceLinks.sort((a: any, b: any) => a.target.y0 - b.target.y0);
+      node.targetLinks.sort((a: any, b: any) => a.source.y0 - b.source.y0);
+    });
+    sankey.update(graph);
+  }
 
   if (nodeVerticalAlignment === 'center' && graph.nodes.length > 1) {
     const terminalLayer = Math.max(...graph.nodes.map((node: any) => node.layer ?? 0));
