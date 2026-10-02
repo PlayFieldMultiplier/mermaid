@@ -47,6 +47,15 @@ export type SankeyLinkColor = 'source' | 'target' | 'gradient';
  */
 export type SankeyNodeAlignment = 'left' | 'right' | 'center' | 'justify';
 /**
+ * This interface was referenced by `MermaidConfig`'s JSON-Schema
+ * via the `definition` "SankeyNodeSort".
+ */
+export type SankeyNodeSort =
+  | 'label-ascending'
+  | 'label-descending'
+  | 'value-ascending'
+  | 'value-descending';
+/**
  * Configuration options to pass to the `dompurify` library.
  */
 export type DOMPurifyConfiguration = import('dompurify').Config;
@@ -2141,35 +2150,55 @@ export interface SankeyDiagramConfig extends BaseDiagramConfig {
    */
   nodePadding?: number;
   /**
+   * Sort modes for individual Sankey columns, from left to right.
+   *
+   *
+   * @minItems 0
+   * @maxItems 3
+   */
+  nodeSort?:
+    | []
+    | [SankeyNodeSort]
+    | [SankeyNodeSort, SankeyNodeSort]
+    | [SankeyNodeSort, SankeyNodeSort, SankeyNodeSort];
+  /**
    * Vertical alignment for the terminal node layer.
+   *
    */
   nodeVerticalAlignment?: 'top' | 'center';
   /**
    * Expand the diagram height when a dense layer cannot fit its nodes and padding.
+   *
    */
   autoHeight?: boolean;
   /**
    * Minimum node height used when autoHeight expands the diagram.
+   *
    */
   minNodeHeight?: number;
   /**
    * Minimum rendered width of Sankey links in pixels.
+   *
    */
   linkMinWidth?: number;
   /**
    * Maximum height used when autoHeight expands the diagram.
+   *
    */
   maxHeight?: number;
   /**
    * Vertical label baseline offset in em units.
+   *
    */
   labelOffset?: number;
   /**
    * Additional vertical padding between nodes when values are shown.
+   *
    */
   labelPadding?: number;
   /**
    * Vertical inset reserved for labels inside the diagram.
+   *
    */
   labelMargin?: number;
   /**

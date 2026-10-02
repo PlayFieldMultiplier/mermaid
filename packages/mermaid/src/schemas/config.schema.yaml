@@ -2642,6 +2642,14 @@ $defs: # JSON Schema definition (maybe we should move these to a separate file)
       outlined: Labels with a white outline for better readability against colored backgrounds.
     default: legacy
 
+  SankeyNodeSort:
+    type: string
+    enum:
+      - label-ascending
+      - label-descending
+      - value-ascending
+      - value-descending
+
   SankeyNodeAlignment:
     description: |
       Controls the alignment of the Sankey diagrams.
@@ -2712,6 +2720,15 @@ $defs: # JSON Schema definition (maybe we should move these to a separate file)
           The padding between nodes in the sankey diagram.
         type: number
         default: 12
+      nodeSort:
+        description: |
+          Sort modes for individual Sankey columns, from left to right.
+        type: array
+        minItems: 0
+        maxItems: 3
+        items:
+          $ref: '#/$defs/SankeyNodeSort'
+        default: []
       nodeVerticalAlignment:
         description: |
           Vertical alignment for the terminal node layer.
